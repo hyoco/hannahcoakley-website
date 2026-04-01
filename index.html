@@ -453,6 +453,34 @@
       color: white;
     }
 
+    .bubble { cursor: pointer; }
+
+    @keyframes bubblePop {
+      0%   { transform: scale(1);   opacity: 0.7; }
+      40%  { transform: scale(1.35); opacity: 0.5; }
+      70%  { transform: scale(0.9); opacity: 0.2; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+
+    .bubble.popping {
+      animation: bubblePop 0.35s cubic-bezier(0.22, 0.61, 0.36, 1) forwards !important;
+      pointer-events: none;
+    }
+
+    .pop-ring {
+      position: fixed;
+      border-radius: 50%;
+      border: 1.5px solid rgba(168, 216, 255, 0.7);
+      pointer-events: none;
+      animation: ringExpand 0.4s ease-out forwards;
+      z-index: 500;
+    }
+
+    @keyframes ringExpand {
+      0%   { transform: scale(0.5); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
     /* PIXEL cursor trail */
     .cursor-dot {
       position: fixed;
@@ -480,17 +508,17 @@
     <div class="hero-sub">▶ click an icon to explore ◀</div>
   </div>
 
-  <div class="desktop-icon" id="icon-music" style="top: 30px; left: 30px;" ondblclick="openWindow('music')">
+  <div class="desktop-icon" id="icon-music" style="top: 30px; left: 20px;" ondblclick="openWindow('music')">
     <div class="icon-img icon-music">🎵</div>
     <div class="icon-label">music</div>
   </div>
 
-  <div class="desktop-icon" id="icon-photo" style="top: 30px; left: 120px;" ondblclick="openWindow('photo')">
+  <div class="desktop-icon" id="icon-photo" style="top: 120px; left: 20px;" ondblclick="openWindow('photo')">
     <div class="icon-img icon-photo">📷</div>
     <div class="icon-label">photos</div>
   </div>
 
-  <div class="desktop-icon" id="icon-consult" style="top: 30px; left: 210px;" ondblclick="openWindow('consult')">
+  <div class="desktop-icon" id="icon-consult" style="top: 210px; left: 20px;" ondblclick="openWindow('consult')">
     <div class="icon-img icon-consult">✦</div>
     <div class="icon-label">work</div>
   </div>
@@ -593,6 +621,60 @@
   </div>
 </div>
 <script>
+  // AUDIO CONTEXT (lazy init on first interaction)
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playBubblePop(x, y) {
+    try {
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(900, ctx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12);
+      filter.Q.value = 1.8;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.15);
+
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.22);
+    } catch(e) {}
+  }
+
+  function popBubble(b, e) {
+    if (b.classList.contains('popping')) return;
+    const rect = b.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const size = rect.width;
+
+    // ring effect
+    const ring = document.createElement('div');
+    ring.className = 'pop-ring';
+    ring.style.cssText = `width:${size}px;height:${size}px;left:${cx - size/2}px;top:${cy - size/2}px;`;
+    document.body.appendChild(ring);
+    ring.addEventListener('animationend', () => ring.remove());
+
+    // pop the bubble
+    b.classList.add('popping');
+    playBubblePop(cx, cy);
+    b.addEventListener('animationend', () => b.remove(), { once: true });
+  }
+
   // BUBBLES
   function makeBubbles() {
     const container = document.getElementById('particles');
@@ -606,6 +688,7 @@
         animation-duration: ${Math.random() * 12 + 10}s;
         animation-delay: ${Math.random() * 10}s;
       `;
+      b.addEventListener('click', e => { e.stopPropagation(); popBubble(b, e); });
       container.appendChild(b);
     }
     // sparkles
