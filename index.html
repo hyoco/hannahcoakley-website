@@ -60,6 +60,7 @@
       inset: 0;
       pointer-events: none;
       overflow: hidden;
+      z-index: 6;
     }
 
     .bubble {
@@ -177,7 +178,7 @@
       padding: 10px;
       border-radius: 8px;
       transition: background 0.2s;
-      z-index: 5;
+      z-index: 8;
       user-select: none;
     }
 
@@ -238,7 +239,7 @@
     }
 
     .window.active { display: block; }
-    .window.focused { z-index: 20; }
+    .window.focused { z-index: 30; }
 
     .window-titlebar {
       display: flex;
@@ -752,7 +753,7 @@
   // WINDOW MANAGEMENT
   const windows = { music: 'win-music', photo: 'win-photo', consult: 'win-consult' };
   const taskbarItems = {};
-  let topZ = 20;
+  let topZ = 30;
 
   function openWindow(id) {
     const win = document.getElementById(windows[id]);
